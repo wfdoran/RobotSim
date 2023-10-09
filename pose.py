@@ -93,6 +93,62 @@ class Pose:
         self.x_in += cos_avg * forward_in + sin_avg * strafe_right_in
         self.y_in += sin_avg * forward_in - cos_avg * strafe_right_in
         self.theta_rads += rotate_counter_clockwise_rads
+
+    def movement_to(self, target):
+        """Determine the forward, strafe, and rotate needed to move to 
+            a target pose.  This is the inverse of apply_movement.  The 
+            rotation is easy.
+
+              rotate = target_theta - theta
+
+            For forward and strafe
+
+              x_target = x + forward * cos_avg(rotate) + strafe * sin_avg(rotate)
+              y_target = y + forward * sin_avg(rotate) - strafe * cos_avg(rotate)
+
+            In matrix form
+
+              [ x_target - x ]   [ cos_avg(rotate)  sin_avg(rotate) ] [ forward ]
+              [              ] = [                                  ] [         ]
+              [ y_target - y ]   [ sin_avg(rotate) -cos_avg(rotate) ] [ strafe  ]
+
+            To get the inverse of the rotation matrix, notice 
+
+              [ a  b ] [ a  b ]   [ a*a + b*b      0     ]
+              [      ] [      ] = [                      ]
+              [ b -a ] [ b -a ]   [     0      a*a + b*b ]
+
+            It is its own inverse upto scale factor.  Note: 
+                  
+                  sin_avg^2 + cos_avg^2 
+
+            does not necessary equal 1.
+
+               [ cos_avg(rotate)  sin_avg(rotate) ] [ x_target - x ]   [ forward ]
+            C  [                                  ] [              ] = [         ]
+               [ sin_avg(rotate) -cos_avg(rotate) ] [ y_target - y ]   [ strafe  ]
+ 
+            where C = 1.0 / sin_avg * sin_avg + cos_avg * cos_avg
+    
+            Here we expect rotate to be big in many cases and it is important 
+            to use cos_avg and sin_avg.
+
+        """              
+
+        rotate_counter_clockwise_rads = normalize_angle(target.theta_rads - self.theta_rads)
+
+        cos_avg = self.__cos_avg(self.theta_rads, self.theta_rads + rotate_counter_clockwise_rads)
+        sin_avg = self.__sin_avg(self.theta_rads, self.theta_rads + rotate_counter_clockwise_rads)
+
+        C = 1.0 / (cos_avg * cos_avg + sin_avg * sin_avg) 
+
+        delta_x_in = target.x_in - self.x_in
+        delta_y_in = target.y_in - self.y_in
+        
+        forward_in = C * (cos_avg * delta_x_in + sin_avg * delta_y_in)
+        strafe_in  = C * (sin_avg * delta_y_in - cos_avg * delta_y_in)
+
+        return (forward_in, strafe_in, rotate_counter_clockwise_rads)
         
 
 def normalize_angle(theta_rads : float):
@@ -122,4 +178,15 @@ if __name__ == "__main__":
     p.apply_movement(strafe_right_in = 10.0, rotate_counter_clockwise_rads = math.pi)
     print(p)
     
+    print("==============")
+
+    p = Pose(1.0, 1.0, 0.0)
+    t = Pose(2.0, 2.0, math.pi / 2.0)
+
+    forward, strafe, rotate = p.movement_to(t)
+    print("%8.4f %8.4f %8.4f" % (forward, strafe, rotate))
+    p.apply_movement(forward, strafe, rotate)
+    print(p)
+
+
     
