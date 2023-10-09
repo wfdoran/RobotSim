@@ -172,7 +172,7 @@ class Pose:
         delta_y_in = target.y_in - self.y_in
         
         forward_in = C * (cos_avg * delta_x_in + sin_avg * delta_y_in)
-        strafe_in  = C * (sin_avg * delta_y_in - cos_avg * delta_y_in)
+        strafe_in  = C * (sin_avg * delta_x_in - cos_avg * delta_y_in)
 
         return (forward_in, strafe_in, rotate_counter_clockwise_rads)
         
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     print("==============")
 
     p = Pose(1.0, 1.0, 0.0)
-    t = Pose(2.0, 2.0, math.pi / 2.0)
+    t = Pose(2.0, 3.0, math.pi / 2.0)
 
     forward, strafe, rotate = p.movement_to(t)
     print("%8.4f %8.4f %8.4f" % (forward, strafe, rotate))
@@ -218,5 +218,8 @@ if __name__ == "__main__":
     print("==============")
     for _ in range(10):
         p = Pose.random()
-        print(p)
+        t = Pose.random()
+        forward, strafe, rotate = p.movement_to(t)
+        p.apply_movement(forward, strafe, rotate)
+        assert(p == t)
     
