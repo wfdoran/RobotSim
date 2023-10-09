@@ -35,7 +35,8 @@ class Pose:
             return False
         if math.fabs(self.y_in - other.y_in) > epsilon_distance_in:
             return False
-        if math.fabs(self.theta_rads - other.theta_rads) > epsilon_distance_rads:
+        delta_theta_rads = normalize_angle((self.theta_rads - other.theta_rads) % (2.0 * math.pi))
+        if math.fabs(delta_theta_rads) > epsilon_distance_rads:
             return False
         return True
 
