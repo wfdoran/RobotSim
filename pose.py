@@ -24,6 +24,20 @@ class Pose:
     def __str__(self):
         return "(%8.4f %8.4f %8.4f)" % (self.x_in, self.y_in, normalize_angle(self.theta_rads))
 
+    def __eq__(self, other):
+        if not isinstance(other, Pose):
+            return False
+        epsilon_distance_in = 0.1      # allow a .1 inch error
+        epsilon_distance_rads = 0.035  # allow a 2 degree error
+        
+        if math.fabs(self.x_in - other.x_in) > epsilon_distance_in:
+            return False
+        if math.fabs(self.y_in - other.y_in) > epsilon_distance_in:
+            return False
+        if math.fabs(self.theta_rads - other.theta_rads) > epsilon_distance_rads:
+            return False
+        return True
+
     THETA_SMALL_THRESH = 0.05
     
     def __cos_avg(self, theta0_rads : float, theta1_rads : float):
@@ -187,6 +201,6 @@ if __name__ == "__main__":
     print("%8.4f %8.4f %8.4f" % (forward, strafe, rotate))
     p.apply_movement(forward, strafe, rotate)
     print(p)
-
-
+    assert(p == t)
+        
     
