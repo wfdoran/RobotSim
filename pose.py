@@ -22,11 +22,7 @@ class Pose:
         self.theta_rads = theta_rads
 
     def __str__(self):
-        if self.theta_rads >= 0:
-            theta_norm_rads = self.theta_rads % (2 * math.pi)
-        else:
-            theta_norm_rads = (self.theta_rads % (2 * math.pi)) - 2 * math.pi
-        return "(%8.4f %8.4f %8.4f)" % (self.x_in, self.y_in, theta_norm_rads)
+        return "(%8.4f %8.4f %8.4f)" % (self.x_in, self.y_in, normalize_angle(self.theta_rads))
 
     THETA_SMALL_THRESH = 0.05
     
@@ -97,6 +93,15 @@ class Pose:
         self.x_in += cos_avg * forward_in + sin_avg * strafe_right_in
         self.y_in += sin_avg * forward_in - cos_avg * strafe_right_in
         self.theta_rads += rotate_counter_clockwise_rads
+        
+
+def normalize_angle(theta_rads : float):
+    """ normalizes the angle theta to be in the range (-pi, pi]. """
+    a = theta_rads % (2.0 * math.pi)
+    if a > math.pi:
+        a -= 2.0 * math.pi
+    return a
+    
         
 if __name__ == "__main__":
     p = Pose()
