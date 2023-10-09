@@ -1,4 +1,5 @@
 import math
+import random
 
 class Pose:
     """ Give the position and orientiation of the robot. 
@@ -37,6 +38,16 @@ class Pose:
         if math.fabs(self.theta_rads - other.theta_rads) > epsilon_distance_rads:
             return False
         return True
+
+    def random():
+        """ return a random Pose on an FTC field. """
+        field_size_in = 144.0
+
+        x_in = field_size_in * random.random()
+        y_in = field_size_in * random.random()
+        theta_rads = normalize_angle(2.0 * math.pi * random.random())
+
+        return Pose(x_in, y_in, theta_rads)
 
     THETA_SMALL_THRESH = 0.05
     
@@ -203,4 +214,8 @@ if __name__ == "__main__":
     print(p)
     assert(p == t)
         
+    print("==============")
+    for _ in range(10):
+        p = Pose.random()
+        print(p)
     
