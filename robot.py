@@ -30,7 +30,8 @@ class Robot:
         self.pose = pose.Pose()
 
     def __str__(self):
-        return "%s %s" % (str(self.pose), str(self.__curr_power))
+        return "%s [%8.4f, %8.4f, %8.4f, %8.4f]" % \
+            (str(self.pose), self.__curr_power[0], self.__curr_power[1], self.__curr_power[2], self.__curr_power[3])
 
     def set_pose(self, pose : pose.Pose):
         self.pose = pose
@@ -51,6 +52,44 @@ class Robot:
         a += self.length_in * self.length_in
         return math.sqrt(a) / 2.0
 
+    def set_power_for_target(self, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
+        forward_in, strafe_right_in, rotate_counter_clockwise_rads = self.pose.movement_to(target)
+        rot_dist_counter_clockwise_in = rotate_counter_clockwise_rads * self.dist_center_to_wheel_in()
+        error_in = abs(forward_in) + abs(strafe_right_in) + 10.0 * abs(rotate_counter_clockwise_rads)
+        
+        if error_in < allowed_error_in:
+            self.set_power(FRONT_RIGHT, 0.0)
+            self.set_power(FRONT_LEFT, 0.0)
+            self.set_power(BACK_RIGHT, 0.0)
+            self.set_power(BACK_LEFT, 0.0)
+            return 
+        
+        forward_in *= math.sqrt(2.0)
+        strafe_right_in *= math.sqrt(2.0)
+
+        dist_in = [0,0,0,0]
+        dist_in[FRONT_LEFT]  = forward_in + strafe_right_in - rot_dist_counter_clockwise_in
+        dist_in[FRONT_RIGHT] = forward_in - strafe_right_in + rot_dist_counter_clockwise_in
+        dist_in[BACK_LEFT]   = forward_in - strafe_right_in - rot_dist_counter_clockwise_in
+        dist_in[BACK_RIGHT]  = forward_in + strafe_right_in + rot_dist_counter_clockwise_in
+
+        norm = max(abs(x) for x in dist_in)
+
+        if error_in < start_slowdown_in:
+            scale = min_power + (error_in - allowed_error_in) * (1.0 - min_power) / (start_slowdown_in - allowed_error_in)
+            norm /= scale
+ 
+
+        power = [x / norm for x in dist_in]
+
+        self.set_power(FRONT_RIGHT, power[FRONT_RIGHT])
+        self.set_power(FRONT_LEFT, power[FRONT_LEFT])
+        self.set_power(BACK_RIGHT, power[BACK_RIGHT])
+        self.set_power(BACK_LEFT, power[BACK_LEFT])
+        
+
+        
+    
     def step(self, t_sec = 0.1):
         # assume for now that the motors are instantly responsive
         for i in range(4):
@@ -67,7 +106,8 @@ class Robot:
         rotate_counter_clockwise_rads = rot_dist_counter_clockwise_in / self.dist_center_to_wheel_in()
 
         self.pose.apply_movement(forward_in, strafe_right_in, rotate_counter_clockwise_rads)
-                                                                                            
+
+        
 
 def power_to_inches(power : float, wheel_radius_in : float, max_rpm : float, t_sec : float):
     min_per_sec = 1.0 / 60.0
@@ -87,5 +127,16 @@ if __name__ == "__main__":
     robot.step()
     print(robot)
     
+    
+    print("===============================")
+
+    r2 = Robot()
+    r2.set_pose(pose.Pose(0.0, 0.0, 0.0))
+    target = pose.Pose(20.0, 30.0, math.pi / 2.0)
+
+    for _ in range(30):
+        r2.set_power_for_target(target)
+        r2.step()
+        print(r2)
     
     
