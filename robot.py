@@ -8,6 +8,31 @@ BACK_LEFT = 2
 BACK_RIGHT = 3
 
 class Robot:
+    """ 
+       This class models a classic FTC Mecanum Wheel Robot.  
+
+       https://gm0.org/en/latest/docs/software/tutorials/mecanum-drive.html
+
+
+       We will assume the wheels are in the X-arrangement.
+       
+         
+                  
+                 |<----  width_in  ---->|
+
+                 \                      /
+                 \                      /  -----
+                 \                      /    ^
+                                             |
+
+                                         length_in
+
+                                             |
+                 /                      \    v
+                 /                      \  -----
+                 /                      \
+
+    """
     width_in : float                 # distance between wheels
     length_in : float                # distance between wheels
     wheel_radius_in : float
@@ -52,6 +77,34 @@ class Robot:
         a += self.length_in * self.length_in
         return math.sqrt(a) / 2.0
 
+    def step(self, t_sec = 0.1):
+        """This is a first shot (very naive) modelling the movement of the
+            robot given powers of the 4 motors.  First we convert the
+            power on each wheel to distance travelled for that wheel.
+            Then those are converted into distance forward, distance
+            strafed, and rotation for the overall robot.  Here the
+            model is overly simple, but we are going with it for now.
+            Finally, the pose of the robot is updated given these 
+            three values. 
+        """ 
+        # assume for now that the motors are instantly responsive
+        for i in range(4):
+            self.__curr_power[i] = self.__set_power[i]
+
+        # convert power to inches moved
+        dist_in = [power_to_inches(power, self.wheel_radius_in, self.max_rpm, t_sec) for power in self.__curr_power]
+
+        forward_in      = ( dist_in[FRONT_LEFT] + dist_in[FRONT_RIGHT] + dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / (4.0 * math.sqrt(2.0)) 
+        strafe_right_in = ( dist_in[FRONT_LEFT] - dist_in[FRONT_RIGHT] - dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / (4.0 * math.sqrt(2.0))
+        rot_dist_counter_clockwise_in = \
+                          (-dist_in[FRONT_LEFT] + dist_in[FRONT_RIGHT] - dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / 4.0
+
+        rotate_counter_clockwise_rads = rot_dist_counter_clockwise_in / self.dist_center_to_wheel_in()
+
+        # update the pose
+        self.pose.apply_movement(forward_in, strafe_right_in, rotate_counter_clockwise_rads)
+    
+
     def set_power_for_target(self, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
         forward_in, strafe_right_in, rotate_counter_clockwise_rads = self.pose.movement_to(target)
         rot_dist_counter_clockwise_in = rotate_counter_clockwise_rads * self.dist_center_to_wheel_in()
@@ -90,22 +143,6 @@ class Robot:
 
         
     
-    def step(self, t_sec = 0.1):
-        # assume for now that the motors are instantly responsive
-        for i in range(4):
-            self.__curr_power[i] = self.__set_power[i]
-
-        # convert power to inches moved
-        dist_in = [power_to_inches(power, self.wheel_radius_in, self.max_rpm, t_sec) for power in self.__curr_power]
-
-        forward_in      = ( dist_in[FRONT_LEFT] + dist_in[FRONT_RIGHT] + dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / (4.0 * math.sqrt(2.0)) 
-        strafe_right_in = ( dist_in[FRONT_LEFT] - dist_in[FRONT_RIGHT] - dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / (4.0 * math.sqrt(2.0))
-        rot_dist_counter_clockwise_in = \
-                          (-dist_in[FRONT_LEFT] + dist_in[FRONT_RIGHT] - dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / 4.0
-
-        rotate_counter_clockwise_rads = rot_dist_counter_clockwise_in / self.dist_center_to_wheel_in()
-
-        self.pose.apply_movement(forward_in, strafe_right_in, rotate_counter_clockwise_rads)
 
         
 
