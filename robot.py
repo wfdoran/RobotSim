@@ -8,13 +8,13 @@ BACK_LEFT = 2
 BACK_RIGHT = 3
 
 class Robot:
-    """ 
-       This class models a classic FTC Mecanum Wheel Robot.  
+    """This class models a classic FTC Mecanum Wheel Robot.  
 
        https://gm0.org/en/latest/docs/software/tutorials/mecanum-drive.html
 
 
-       We will assume the wheels are in the X-arrangement.
+       We will assume the wheels are in the X-arrangement at 45
+       degrees.
        
          
                   
@@ -33,11 +33,17 @@ class Robot:
                  /                      \
 
     """
+
+    # constant robot parameters.  We assume all four wheels
+    # and motors are the same.  
     width_in : float                 # distance between wheels
     length_in : float                # distance between wheels
-    wheel_radius_in : float
-    max_rpm : float
+    wheel_radius_in : float          # radius of the wheels
+    max_rpm : float                  # max rpm of the mo
 
+    # the robots current pose.  For now we assume the programer can
+    # see this.  Eventually, this will have be inferred from odometry
+    # and April tags.
     pose : pose.Pose
 
     # wheel motor powers
@@ -65,11 +71,7 @@ class Robot:
         return self.pose
 
     def set_power(self, motor : int, power : float):
-        if power > 1.0:
-            power = 1.0
-        if power < -1.0:
-            power = -1.0
-
+        power = clamp(power, -1.0, 1.0)
         self.__set_power[motor] = power
 
     def dist_center_to_wheel_in(self):
@@ -78,14 +80,14 @@ class Robot:
         return math.sqrt(a) / 2.0
 
     def step(self, t_sec = 0.1):
-        """This is a first shot (very naive) modelling the movement of the
-            robot given powers of the 4 motors.  First we convert the
-            power on each wheel to distance travelled for that wheel.
-            Then those are converted into distance forward, distance
-            strafed, and rotation for the overall robot.  Here the
-            model is overly simple, but we are going with it for now.
-            Finally, the pose of the robot is updated given these 
-            three values. 
+        """This is a first shot (very naive) modeling of the movement
+            of the robot given powers of the 4 motors.  First we
+            convert the power on each wheel to distance travelled for
+            that wheel.  Then those are converted into distance
+            forward, distance strafed, and rotation for the overall
+            robot.  Here the model is overly simple, but we are going
+            with it for now.  Finally, the pose of the robot is
+            updated given these three values.
         """ 
         # assume for now that the motors are instantly responsive
         for i in range(4):
@@ -106,17 +108,56 @@ class Robot:
     
 
     def set_power_for_target(self, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
+        """
+           Now we want to do the opposite of step(): what power settings 
+           of the four motors will take us from our current pose to the 
+           target pose.  The key is the equations for the stepping have 
+           a pseudo-inverse.  Writing this in matrix form, the formula
+           for power to distance is
+
+            ( forward )    ( 1/(4 sqrt(2))        0         0  )  (  1  1  1  1 ) ( front_left  )           
+            ( strafe  ) =  (      0         1/(4 sqrt(2))   0  )  (  1 -1 -1  1 ) ( front_right )
+            ( rotate  )    (      0               0        1/4 )  ( -1  1 -1  1 ) ( back_left   )
+                                                                                  ( back_right  )
+
+           Notice that 
+            
+              (  1  1  1  1 )  ( 1  1 -1)      (1 0 0)
+              (  1 -1 -1  1 )  ( 1 -1  1)  = 4 (0 1 0) 
+              ( -1  1 -1  1 )  ( 1 -1 -1)      (0 0 1)  
+                               ( 1  1  1) 
+
+           So, give how far we want move forward, strafe, and rotate, we 
+           select powers using.
+ 
+           ( front_left  )    ( 1  1 -1) ( sqrt(2)    0     0 ) ( forward )      
+           ( front_right ) =  ( 1 -1  1) (   0     sqrt(2)  0 ) ( strafe  )  
+           ( back_left   )    ( 1 -1 -1) (   0        0     1 ) ( rotate  )
+           ( back_right  )    ( 1  1  1)
+            
+
+           
+
+        """
+
+        # How far do we need to move get to the target.  Also how
+        # close are we to the target (the error).  As we get close, we
+        # will scale back the speed.  Eventually, we will put a PID
+        # controller in here.  For now we just linearly ramp down.
         forward_in, strafe_right_in, rotate_counter_clockwise_rads = self.pose.movement_to(target)
         rot_dist_counter_clockwise_in = rotate_counter_clockwise_rads * self.dist_center_to_wheel_in()
         error_in = abs(forward_in) + abs(strafe_right_in) + 10.0 * abs(rotate_counter_clockwise_rads)
-        
+
+        # If we are within the allowed range of the target, stop.
         if error_in < allowed_error_in:
             self.set_power(FRONT_RIGHT, 0.0)
             self.set_power(FRONT_LEFT, 0.0)
             self.set_power(BACK_RIGHT, 0.0)
             self.set_power(BACK_LEFT, 0.0)
             return 
-        
+
+        # perform the two matrix multiplications to get
+        # motor powers
         forward_in *= math.sqrt(2.0)
         strafe_right_in *= math.sqrt(2.0)
 
@@ -126,15 +167,18 @@ class Robot:
         dist_in[BACK_LEFT]   = forward_in - strafe_right_in - rot_dist_counter_clockwise_in
         dist_in[BACK_RIGHT]  = forward_in + strafe_right_in + rot_dist_counter_clockwise_in
 
+        # now normalize so that the largest power is 1 in absolute value
         norm = max(abs(x) for x in dist_in)
 
+        # if we are within the slowdown range, scale the powers down.
+        # again this needs to be a PID controller.
         if error_in < start_slowdown_in:
             scale = min_power + (error_in - allowed_error_in) * (1.0 - min_power) / (start_slowdown_in - allowed_error_in)
             norm /= scale
  
-
         power = [x / norm for x in dist_in]
 
+        # set the motors
         self.set_power(FRONT_RIGHT, power[FRONT_RIGHT])
         self.set_power(FRONT_LEFT, power[FRONT_LEFT])
         self.set_power(BACK_RIGHT, power[BACK_RIGHT])
@@ -147,9 +191,14 @@ class Robot:
         
 
 def power_to_inches(power : float, wheel_radius_in : float, max_rpm : float, t_sec : float):
+    """ convert motor power and time run to inches moved.  """
     min_per_sec = 1.0 / 60.0
     wheel_rots = power * max_rpm * min_per_sec * t_sec
     return wheel_rots * 2.0 * math.pi * wheel_radius_in
+
+def clamp(value, lower_bound, upper_bound):
+    """ utility function to clamp values to range. """
+    return max(min(value, upper_bound), lower_bound)
 
 
 if __name__ == "__main__":
@@ -177,3 +226,4 @@ if __name__ == "__main__":
         print(r2)
     
     
+    print("===============================")
