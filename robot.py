@@ -185,7 +185,8 @@ class Robot:
         self.set_power(BACK_LEFT, power[BACK_LEFT])
         
 
-        
+    def is_stopped(self):
+        return sum(abs(x) for x in self.__curr_power) < 0.0001
     
 
         
@@ -227,3 +228,15 @@ if __name__ == "__main__":
     
     
     print("===============================")
+    r3 = Robot()
+    r3.set_pose(pose.Pose.random())
+    target = pose.Pose.random()
+
+    print(r3.get_pose())
+    while True:
+        r3.set_power_for_target(target)
+        r3.step()
+        print(r3)
+        if r3.is_stopped():
+            break
+    print(target)
