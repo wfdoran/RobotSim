@@ -41,7 +41,7 @@ class Robot:
     wheel_radius_in : float          # radius of the wheels
     max_rpm : float                  # max rpm of the mo
 
-    # the robots current pose.  For now we assume the programer can
+    # the robots current pose.  For now we assume the programmer can
     # see this.  Eventually, this will have be inferred from odometry
     # and April tags.
     pose : pose.Pose
@@ -51,6 +51,8 @@ class Robot:
     __set_power : List[float]
 
     def __init__(self, width_in = 13.0, length_in = 13.0, wheel_radius_in = 1.9, max_rpm = 312.0):
+        """ When creating a new robot, the constant robot parameters must be set.
+            Defaults are given.  The robot starts off in the corner, not moving.  """
         self.width_in = width_in
         self.length_in = length_in
         self.wheel_radius_in = wheel_radius_in
@@ -71,6 +73,7 @@ class Robot:
         return self.pose
 
     def set_power(self, motor : int, power : float):
+        """ Sets the power for one of the motors. """
         power = clamp(power, -1.0, 1.0)
         self.__set_power[motor] = power
 
@@ -78,6 +81,22 @@ class Robot:
         a = self.width_in * self.width_in
         a += self.length_in * self.length_in
         return math.sqrt(a) / 2.0
+
+    def eff_dist_center_to_wheel_in(self):
+        """When the four Mecanum wheels do not form a square.  There
+            is an adjustment needed since the rotational force is at a
+            45 degree angle.  See
+
+            https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/zamm.201900173
+
+            for details.
+
+            Note: when width == length, this returns the same value as
+              dist_center_to_wheel
+
+        """
+        return (self.width_in + self.length_in) / (2.0 * math.sqrt(2.0))
+        
 
     def step(self, t_sec = 0.1):
         """This is a first shot (very naive) modeling of the movement
@@ -88,6 +107,12 @@ class Robot:
             robot.  Here the model is overly simple, but we are going
             with it for now.  Finally, the pose of the robot is
             updated given these three values.
+
+            In Zeidis and Zimmermann's paper referenced above, this
+            is the "approximate" method, equation 11 on page 4.
+
+            This model does not take into account distribution of
+            weight on the wheels, rolling resistances, slipping, ...
         """ 
         # assume for now that the motors are instantly responsive
         for i in range(4):
@@ -101,23 +126,22 @@ class Robot:
         rot_dist_counter_clockwise_in = \
                           (-dist_in[FRONT_LEFT] + dist_in[FRONT_RIGHT] - dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / 4.0
 
-        rotate_counter_clockwise_rads = rot_dist_counter_clockwise_in / self.dist_center_to_wheel_in()
+        rotate_counter_clockwise_rads = rot_dist_counter_clockwise_in / self.eff_dist_center_to_wheel_in()
 
         # update the pose
         self.pose.apply_movement(forward_in, strafe_right_in, rotate_counter_clockwise_rads)
     
 
     def set_power_for_target(self, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
-        """
-           Now we want to do the opposite of step(): what power settings 
-           of the four motors will take us from our current pose to the 
+        """Now we want to do the opposite of step(): what power settings 
+           of the four motors will take us from our current pose to a
            target pose.  The key is the equations for the stepping have 
            a pseudo-inverse.  Writing this in matrix form, the formula
-           for power to distance is
+           for wheels turning distance to robot moving distance is
 
             ( forward )    ( 1/(4 sqrt(2))        0         0  )  (  1  1  1  1 ) ( front_left  )           
             ( strafe  ) =  (      0         1/(4 sqrt(2))   0  )  (  1 -1 -1  1 ) ( front_right )
-            ( rotate  )    (      0               0        1/4 )  ( -1  1 -1  1 ) ( back_left   )
+            ( rotate  )    (      0               0        1/4 )  ( -1  1 -1  1 ) ( back_left   )       (eqn 1)
                                                                                   ( back_right  )
 
            Notice that 
@@ -127,17 +151,27 @@ class Robot:
               ( -1  1 -1  1 )  ( 1 -1 -1)      (0 0 1)  
                                ( 1  1  1) 
 
-           So, give how far we want move forward, strafe, and rotate, we 
-           select powers using.
+           This the pseudo-inverse. It an inverse in one direction
+           only, but only need that direction.  Given how far we want
+           move forward, strafe, and rotate, we select powers using.
  
            ( front_left  )    ( 1  1 -1) ( sqrt(2)    0     0 ) ( forward )      
-           ( front_right ) =  ( 1 -1  1) (   0     sqrt(2)  0 ) ( strafe  )  
+           ( front_right ) =  ( 1 -1  1) (   0     sqrt(2)  0 ) ( strafe  )                             (eqn 2)
            ( back_left   )    ( 1 -1 -1) (   0        0     1 ) ( rotate  )
            ( back_right  )    ( 1  1  1)
             
 
-           
+           When you matrix multiply out (eqn 1) * (eqn 2), everything cancels and you get
 
+           ( forward )   ( 1 0 0 ) ( forward )
+           ( strafe  ) = ( 0 1 0 ) ( strafe  )
+           ( rotate  )   ( 0 0 1 ) ( rotate  )
+
+           This means if you start with the "desired" (forward, strafe, rotate) and use eqn 2 to get motor
+           powers, and then use eqn 1 to determine how far you actually move with those powers.  The actual
+           values will equal the desired values.
+
+           Note: This method for getting from A to B works best if you are already roughly facing B.
         """
 
         # How far do we need to move get to the target.  Also how
@@ -145,7 +179,7 @@ class Robot:
         # will scale back the speed.  Eventually, we will put a PID
         # controller in here.  For now we just linearly ramp down.
         forward_in, strafe_right_in, rotate_counter_clockwise_rads = self.pose.movement_to(target)
-        rot_dist_counter_clockwise_in = rotate_counter_clockwise_rads * self.dist_center_to_wheel_in()
+        rot_dist_counter_clockwise_in = rotate_counter_clockwise_rads * self.eff_dist_center_to_wheel_in()
         error_in = abs(forward_in) + abs(strafe_right_in) + 10.0 * abs(rotate_counter_clockwise_rads)
 
         # If we are within the allowed range of the target, stop.
@@ -156,8 +190,9 @@ class Robot:
             self.set_power(BACK_LEFT, 0.0)
             return 
 
-        # perform the two matrix multiplications to get
-        # motor powers
+        # perform the two matrix multiplication to get wheel
+        # distances.  This first one just scales forward and right by
+        # sqrt(2).
         forward_in *= math.sqrt(2.0)
         strafe_right_in *= math.sqrt(2.0)
 
@@ -167,7 +202,8 @@ class Robot:
         dist_in[BACK_LEFT]   = forward_in - strafe_right_in - rot_dist_counter_clockwise_in
         dist_in[BACK_RIGHT]  = forward_in + strafe_right_in + rot_dist_counter_clockwise_in
 
-        # now normalize so that the largest power is 1 in absolute value
+        # We want to normalize these distances so that the largest
+        # power is 1 in absolute value
         norm = max(abs(x) for x in dist_in)
 
         # if we are within the slowdown range, scale the powers down.
@@ -175,7 +211,7 @@ class Robot:
         if error_in < start_slowdown_in:
             scale = min_power + (error_in - allowed_error_in) * (1.0 - min_power) / (start_slowdown_in - allowed_error_in)
             norm /= scale
- 
+
         power = [x / norm for x in dist_in]
 
         # set the motors
@@ -192,7 +228,7 @@ class Robot:
         
 
 def power_to_inches(power : float, wheel_radius_in : float, max_rpm : float, t_sec : float):
-    """ convert motor power and time run to inches moved.  """
+    """ utility function to convert motor power and time run to inches moved.  """
     min_per_sec = 1.0 / 60.0
     wheel_rots = power * max_rpm * min_per_sec * t_sec
     return wheel_rots * 2.0 * math.pi * wheel_radius_in
