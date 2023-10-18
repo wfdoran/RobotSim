@@ -271,6 +271,28 @@ class Robot:
         self.set_power(FRONT_LEFT, power[FRONT_LEFT])
         self.set_power(BACK_RIGHT, power[BACK_RIGHT])
         self.set_power(BACK_LEFT, power[BACK_LEFT])
+
+    def delta_odo_to_change(self, delta_y_in : float, delta_x1_in : float, delta_x2_in):
+        """ this routine inverts the odometry equations in step() to get the motion of
+            the robot from the change in the odometry readings.  In matrix form the
+            update in step is.
+        
+            [ delta_y  ]   [ 0  -1  -y_dist ]  [ forward  ]
+            [ delta_x1 ] = [ 1   0  -x_dist ]  [ strafe   ]
+            [ delta_x2 ]   [ 1   0   x_dist ]  [ rotation ]
+        """
+
+        # add last two together
+        forward_in = (delta_x1_in + delta_x2_in) / 2.0
+
+        # subtract the last two
+        rotation_counter_clockwise_rads = (delta_x2_in - delta_x1_in) / (2.0 * self.odo_x_dist_in)
+
+        # substitute into the first equation to get strafe
+        strafe_right_in = -delta_y - rotation_counter_clockwise_rads * self.odo_y_dist_in
+
+        return (forward_in, strafe_right_in, rotation_counter_clockwise_rads)
+        
         
     def is_stopped(self):
         return sum(abs(x) for x in self.__curr_power) < 0.0001
