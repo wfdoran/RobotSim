@@ -359,7 +359,7 @@ if __name__ == "__main__":
         delta_odo = tuple(current_odo[i] - prev_odo[i] for i in range(3))
 
         # how much did we move
-        forward_in, strafe_right_in, rotation_counter_clockwise_rads = r3.delta_odo_to_change(delta_odo[0], delta_odo[1], delta_odo[2])
+        forward_in, strafe_right_in, rotation_counter_clockwise_rads = r3.delta_odo_to_change(*delta_odo)
 
         # update our believed posisition 
         current_pose.apply_movement(forward_in, strafe_right_in, rotation_counter_clockwise_rads)
