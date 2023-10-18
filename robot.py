@@ -111,6 +111,9 @@ class Robot:
         if odo_x_dist_in is not None:
             self.odo_x_dist_in = odo_x_dist_in
 
+    def read_odometry(self):
+        return (self.odo_y_in, self.odo_x1_in, self.odo_x2_in)
+
     def get_pose(self):
         return self.pose
 
@@ -269,7 +272,6 @@ class Robot:
         self.set_power(BACK_RIGHT, power[BACK_RIGHT])
         self.set_power(BACK_LEFT, power[BACK_LEFT])
         
-
     def is_stopped(self):
         return sum(abs(x) for x in self.__curr_power) < 0.0001
     
