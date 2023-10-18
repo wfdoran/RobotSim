@@ -20,17 +20,29 @@ class Robot:
                   
                  |<----  width_in  ---->|
 
-                 \                      /
+                 \         -y-          /
                  \                      /  -----
                  \                      /    ^
                                              |
 
                                          length_in
 
-                                             |
-                 /                      \    v
-                 /                      \  -----
+                    |                |  |
+                 /  x1              x2  \    v
+                 /  |                |  \  -----
                  /                      \
+
+
+        For odometry, we assume one odometry pod (named y) in the
+        front running perpendicular to the robot, and two pods (named
+        x1 and x2) running parallel to the robot.  We further assume
+        y is on the center line.
+
+        Note on odometry: we are going to give odometry readings in
+        inches.  In practice, the odometry pods give ticks which can
+        be converted to inches by knowing the ticks/rotation of the
+        pods (typically 2**13) and the radius of the pods (maybe an
+        inch).
 
     """
 
@@ -39,9 +51,11 @@ class Robot:
     width_in : float                 # distance between wheels
     length_in : float                # distance between wheels
     wheel_radius_in : float          # radius of the wheels
-    max_rpm : float                  # max rpm of the mo
+    max_rpm : float                  # max rpm of the motors
+    odo_y_dist_in : float            # distance from center to y
+    odo_x_dist_in : float            # distance from center line to xs
 
-    # the robots current pose.  For now we assume the programmer can
+    # the robot's current pose.  For now we assume the programmer can
     # see this.  Eventually, this will have be inferred from odometry
     # and April tags.
     pose : pose.Pose
@@ -50,6 +64,12 @@ class Robot:
     __curr_power : List[float]
     __set_power : List[float]
 
+    # the current odometry pod readings
+    odo_y_in : float
+    odo_x1_in : float
+    odo_x2_in : float
+    
+    
     def __init__(self, width_in = 13.0, length_in = 13.0, wheel_radius_in = 1.9, max_rpm = 312.0):
         """ When creating a new robot, the constant robot parameters must be set.
             Defaults are given.  The robot starts off in the corner, not moving.  """
@@ -57,10 +77,22 @@ class Robot:
         self.length_in = length_in
         self.wheel_radius_in = wheel_radius_in
         self.max_rpm = max_rpm
+
+        # We initially assume assume the y odo pod is in line with the
+        # front wheels and the x1 and x2 are in line with their respective
+        # side wheels
+        self.odo_y_dist_in = length_in / 2.0
+        self.odo_x_dist_in = width_in / 2.0
+        
+        self.pose = pose.Pose()
+
+        # Start not moving and odometry at zero
         self.__curr_power = [0.0, 0.0, 0.0, 0.0]
         self.__set_power = [0.0, 0.0, 0.0, 0.0]
+        self.odo_y_in = 0.0
+        self.odo_x1_in = 0.0
+        self.odo_x2_in = 0.0
 
-        self.pose = pose.Pose()
 
     def __str__(self):
         return "%s [%8.4f, %8.4f, %8.4f, %8.4f]" % \
