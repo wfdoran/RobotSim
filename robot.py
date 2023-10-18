@@ -101,6 +101,14 @@ class Robot:
     def set_pose(self, pose : pose.Pose):
         self.pose = pose
 
+    def set_odo_position(self, odo_y_dist_in, odo_x_dist_in):
+        """ Sets the position of the odometry pods on the robot in case they are
+            not in the default locations. """
+        if odo_y_dist_in is not None:
+            self.odo_y_dist_in = odo_y_dist_in
+        if odo_x_dist_in is not None:
+            self.odo_x_dist_in = odo_x_dist_in
+
     def get_pose(self):
         return self.pose
 
