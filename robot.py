@@ -36,7 +36,9 @@ class Robot:
         For odometry, we assume one odometry pod (named y) in the
         front running perpendicular to the robot, and two pods (named
         x1 and x2) running parallel to the robot.  We further assume
-        y is on the center line.
+        y is on the center line.  One more assumption, we assume the
+        y pod is installed so that positive is to the right, and
+        x1 and x2 are installed so that positive is forward.
 
         Note on odometry: we are going to give odometry readings in
         inches.  In practice, the odometry pods give ticks which can
@@ -170,6 +172,11 @@ class Robot:
 
         # update the pose
         self.pose.apply_movement(forward_in, strafe_right_in, rotate_counter_clockwise_rads)
+
+        # update the odometry pod values
+        self.odo_y_in  +=               strafe_right_in - rotate_counter_clockwise_rads * self.odo_y_dist_in 
+        self.odo_x1_in +=  forward_in +                 - rotate_counter_clockwise_rads * self.odo_x_dist_in
+        self.odo_x2_in +=  forward_in +                 + rotate_counter_clockwise_rads * self.odo_x_dist_in
 
 
     def power_for_target(self, current : pose.Pose, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
