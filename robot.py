@@ -130,11 +130,11 @@ class Robot:
 
         # update the pose
         self.pose.apply_movement(forward_in, strafe_right_in, rotate_counter_clockwise_rads)
-    
 
-    def set_power_for_target(self, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
+
+    def power_for_target(self, current : pose.Pose, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
         """Now we want to do the opposite of step(): what power settings 
-           of the four motors will take us from our current pose to a
+           of the four motors will take us from the current pose to a
            target pose.  The key is the equations for the stepping have 
            a pseudo-inverse.  Writing this in matrix form, the formula
            for wheels turning distance to robot moving distance is
@@ -178,17 +178,13 @@ class Robot:
         # close are we to the target (the error).  As we get close, we
         # will scale back the speed.  Eventually, we will put a PID
         # controller in here.  For now we just linearly ramp down.
-        forward_in, strafe_right_in, rotate_counter_clockwise_rads = self.pose.movement_to(target)
+        forward_in, strafe_right_in, rotate_counter_clockwise_rads = current.movement_to(target)
         rot_dist_counter_clockwise_in = rotate_counter_clockwise_rads * self.eff_dist_center_to_wheel_in()
         error_in = abs(forward_in) + abs(strafe_right_in) + 10.0 * abs(rotate_counter_clockwise_rads)
 
         # If we are within the allowed range of the target, stop.
         if error_in < allowed_error_in:
-            self.set_power(FRONT_RIGHT, 0.0)
-            self.set_power(FRONT_LEFT, 0.0)
-            self.set_power(BACK_RIGHT, 0.0)
-            self.set_power(BACK_LEFT, 0.0)
-            return 
+            return [0.0, 0.0, 0.0, 0.0]
 
         # perform the two matrix multiplication to get wheel
         # distances.  This first one just scales forward and right by
@@ -213,7 +209,13 @@ class Robot:
             norm /= scale
 
         power = [x / norm for x in dist_in]
+        return power
 
+        
+    def set_power_for_target(self, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
+        # Cheat and use the current pose to get the motor 
+        power = self.power_for_target(self.pose, target, allowed_error_in, start_slowdown_in, min_power)
+        
         # set the motors
         self.set_power(FRONT_RIGHT, power[FRONT_RIGHT])
         self.set_power(FRONT_LEFT, power[FRONT_LEFT])
