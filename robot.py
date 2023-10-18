@@ -338,15 +338,46 @@ if __name__ == "__main__":
     
     
     print("===============================")
-    r3 = Robot()
-    r3.set_pose(pose.Pose.random())
+    start = pose.Pose.random()
     target = pose.Pose.random()
 
-    print(r3.get_pose())
+    r3 = Robot()
+    r3.set_pose(start)
+
+    current_pose = start
+    current_odo = r3.read_odometry()
+
+    print(start)
     while True:
-        r3.set_power_for_target(target)
+        # In stead of doing this
+        #   r3.set_power_for_target(target)
+        # use the odometry pods to work out what powers we need on the motors
+
+        # read the odometry pods
+        prev_odo = current_odo[:]
+        current_odo = r3.read_odometry()
+        delta_odo = tuple(current_odo[i] - prev_odo[i] for i in range(3))
+
+        # how much did we move
+        forward_in, strafe_right_in, rotation_counter_clockwise_rads = r3.delta_odo_to_change(delta_odo[0], delta_odo[1], delta_odo[2])
+
+        # update our believed posisition 
+        current_pose.apply_movement(forward_in, strafe_right_in, rotation_counter_clockwise_rads)
+        assert(current_pose == r3.pose)   # let's peek an make sure we are right
+
+        # what power settings do we need to get to target?
+        power = r3.power_for_target(current_pose, target)
+
+        # set the powers
+        r3.set_power(FRONT_RIGHT, power[FRONT_RIGHT])
+        r3.set_power(FRONT_LEFT, power[FRONT_LEFT])
+        r3.set_power(BACK_RIGHT, power[BACK_RIGHT])
+        r3.set_power(BACK_LEFT, power[BACK_LEFT])
+
+        # step the robot
         r3.step()
         print(r3)
         if r3.is_stopped():
             break
+
     print(target)
