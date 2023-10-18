@@ -139,33 +139,33 @@ class Robot:
            a pseudo-inverse.  Writing this in matrix form, the formula
            for wheels turning distance to robot moving distance is
 
-            ( forward )    ( 1/(4 sqrt(2))        0         0  )  (  1  1  1  1 ) ( front_left  )           
-            ( strafe  ) =  (      0         1/(4 sqrt(2))   0  )  (  1 -1 -1  1 ) ( front_right )
-            ( rotate  )    (      0               0        1/4 )  ( -1  1 -1  1 ) ( back_left   )       (eqn 1)
-                                                                                  ( back_right  )
+            [ forward ]    [ 1/(4 sqrt(2))        0         0  ]  [  1  1  1  1 ] [ front_left  ]
+            [ strafe  ] =  [      0         1/(4 sqrt(2))   0  ]  [  1 -1 -1  1 ] [ front_right ]
+            [ rotate  ]    [      0               0        1/4 ]  [ -1  1 -1  1 ] [ back_left   ]       (eqn 1)
+                                                                                  [ back_right  ]
 
            Notice that 
             
-              (  1  1  1  1 )  ( 1  1 -1)      (1 0 0)
-              (  1 -1 -1  1 )  ( 1 -1  1)  = 4 (0 1 0) 
-              ( -1  1 -1  1 )  ( 1 -1 -1)      (0 0 1)  
-                               ( 1  1  1) 
+              [  1  1  1  1 ]  [ 1  1 -1]      [1 0 0]
+              [  1 -1 -1  1 ]  [ 1 -1  1]  = 4 [0 1 0]
+              [ -1  1 -1  1 ]  [ 1 -1 -1]      [0 0 1]
+                               [ 1  1  1]
 
            This the pseudo-inverse. It an inverse in one direction
            only, but only need that direction.  Given how far we want
            move forward, strafe, and rotate, we select powers using.
  
-           ( front_left  )    ( 1  1 -1) ( sqrt(2)    0     0 ) ( forward )      
-           ( front_right ) =  ( 1 -1  1) (   0     sqrt(2)  0 ) ( strafe  )                             (eqn 2)
-           ( back_left   )    ( 1 -1 -1) (   0        0     1 ) ( rotate  )
-           ( back_right  )    ( 1  1  1)
+           [ front_left  ]    [ 1  1 -1] [ sqrt(2)    0     0 ] [ forward ]
+           [ front_right ] =  [ 1 -1  1] [   0     sqrt[2)  0 ] [ strafe  ]                             (eqn 2)
+           [ back_left   ]    [ 1 -1 -1] [   0        0     1 ] [ rotate  ]
+           [ back_right  ]    [ 1  1  1]
             
 
            When you matrix multiply out (eqn 1) * (eqn 2), everything cancels and you get
 
-           ( forward )   ( 1 0 0 ) ( forward )
-           ( strafe  ) = ( 0 1 0 ) ( strafe  )
-           ( rotate  )   ( 0 0 1 ) ( rotate  )
+           [ forward ]   [ 1 0 0 ] [ forward ]
+           [ strafe  ] = [ 0 1 0 ] [ strafe  ]
+           [ rotate  ]   [ 0 0 1 ] [ rotate  ]
 
            This means if you start with the "desired" (forward, strafe, rotate) and use eqn 2 to get motor
            powers, and then use eqn 1 to determine how far you actually move with those powers.  The actual
