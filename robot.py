@@ -1,4 +1,5 @@
 import math
+import copy
 from typing import List
 import pose
 
@@ -101,7 +102,7 @@ class Robot:
             (str(self.pose), self.__curr_power[0], self.__curr_power[1], self.__curr_power[2], self.__curr_power[3])
 
     def set_pose(self, pose : pose.Pose):
-        self.pose = pose
+        self.pose = copy.copy(pose)
 
     def set_odo_position(self, odo_y_dist_in, odo_x_dist_in):
         """ Sets the position of the odometry pods on the robot in case they are

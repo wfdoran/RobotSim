@@ -40,6 +40,9 @@ class Pose:
             return False
         return True
 
+    def __copy__(self):
+        return Pose(self.x_in, self.y_in, self.theta_rads)
+
     def random():
         """ return a random Pose on an FTC field. """
         field_size_in = 144.0
