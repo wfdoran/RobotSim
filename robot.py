@@ -1,5 +1,6 @@
 import math
 import copy
+import random
 from typing import List
 import pose
 
@@ -144,7 +145,7 @@ class Robot:
         return (self.width_in + self.length_in) / (2.0 * math.sqrt(2.0))
         
 
-    def step(self, t_sec = 0.1):
+    def step(self, t_sec : float = 0.1, noise : float = 1.0):
         """This is a first shot (very naive) modeling of the movement
             of the robot given powers of the 4 motors.  First we
             convert the power on each wheel to distance travelled for
@@ -158,14 +159,19 @@ class Robot:
             is the "approximate" method, equation 11 on page 4.
 
             This model does not take into account distribution of
-            weight on the wheels, rolling resistances, slipping, ...
+            weight on the wheels, rolling resistances, slipping, ... 
         """ 
-        # assume for now that the motors are instantly responsive
+        # Assume for now that the motors are instantly responsive
         for i in range(4):
             self.__curr_power[i] = self.__set_power[i]
 
+        
+        # For a little bit real life randomness, the user can call
+        # this routine with noise.
+        actual_power = [(1.0 - random.random() * noise) * power for power in self.__curr_power] 
+
         # convert power to inches moved
-        dist_in = [power_to_inches(power, self.wheel_radius_in, self.max_rpm, t_sec) for power in self.__curr_power]
+        dist_in = [power_to_inches(power, self.wheel_radius_in, self.max_rpm, t_sec) for power in actual_power]
 
         forward_in      = ( dist_in[FRONT_LEFT] + dist_in[FRONT_RIGHT] + dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / (4.0 * math.sqrt(2.0)) 
         strafe_right_in = ( dist_in[FRONT_LEFT] - dist_in[FRONT_RIGHT] - dist_in[BACK_LEFT] + dist_in[BACK_RIGHT]) / (4.0 * math.sqrt(2.0))
@@ -374,8 +380,8 @@ if __name__ == "__main__":
         r3.set_power(BACK_RIGHT, power[BACK_RIGHT])
         r3.set_power(BACK_LEFT, power[BACK_LEFT])
 
-        # step the robot
-        r3.step()
+        # step the robot with a bit of noise
+        r3.step(noise = 0.10)
         print(r3)
         if r3.is_stopped():
             break
