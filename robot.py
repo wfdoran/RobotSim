@@ -260,7 +260,9 @@ class Robot:
         norm = max(abs(x) for x in dist_in)
 
         # if we are within the slowdown range, scale the powers down.
-        # again this needs to be a PID controller.
+        # See the section on Motion Profiles in
+        #  https://gm0.org/en/latest/docs/software/concepts/control-loops.html
+        # This is really naive motion profile.
         if error_in < start_slowdown_in:
             scale = min_power + (error_in - allowed_error_in) * (1.0 - min_power) / (start_slowdown_in - allowed_error_in)
             norm /= scale
