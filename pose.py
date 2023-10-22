@@ -178,7 +178,22 @@ class Pose:
         strafe_in  = C * (sin_avg * delta_x_in - cos_avg * delta_y_in)
 
         return (forward_in, strafe_in, rotate_counter_clockwise_rads)
-        
+
+    def relative_direction(self, target):
+        """Computes the position of the target pose relative to our pose.
+            This motion will get to to the target position but with
+            the current heading, not the target heading.
+        """
+        delta_x_in = target.x_in - self.x_in
+        delta_y_in = target.y_in - self.y_in
+
+        cos_theta = math.cos(self.theta_rads)
+        sin_theta = math.sin(self.theta_rads)
+
+        forward_in = cos_theta * delta_x_in + sin_theta * delta_y_in
+        strafe_in  = sin_theta * delta_x_in - cos_theta * delta_y_in
+       
+        return forward_in, strafe_in
 
 def normalize_angle(theta_rads : float):
     """ normalizes the angle theta to be in the range (-pi, pi]. """
