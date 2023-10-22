@@ -2,6 +2,7 @@ import math
 import copy
 import random
 from typing import List
+import matplotlib.pyplot as plt
 import pose
 
 FRONT_LEFT = 0
@@ -372,6 +373,11 @@ if __name__ == "__main__":
         # update our believed posisition 
         current_pose.apply_movement(forward_in, strafe_right_in, rotation_counter_clockwise_rads)
         assert(current_pose == r3.pose)   # let's peek an make sure we are right
+        plt.plot(current_pose.x_in, current_pose.y_in, 'o', color='black')
+        arrow_len_in = 1.0
+        plt.arrow(current_pose.x_in, current_pose.y_in,
+                  arrow_len_in * math.cos(current_pose.theta_rads),
+                  arrow_len_in * math.sin(current_pose.theta_rads))
 
         # what power settings do we need to get to target?
         power = r3.power_for_target(current_pose, target)
@@ -389,3 +395,7 @@ if __name__ == "__main__":
             break
 
     print(target)
+
+    plt.show()
+
+    
