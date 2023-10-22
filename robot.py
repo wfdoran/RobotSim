@@ -189,7 +189,6 @@ class Robot:
         self.odo_x1_in +=  forward_in +                 - rotate_counter_clockwise_rads * self.odo_x_dist_in
         self.odo_x2_in +=  forward_in +                 + rotate_counter_clockwise_rads * self.odo_x_dist_in
 
-
     def power_for_target(self, current : pose.Pose, target : pose.Pose, allowed_error_in = 1.0, start_slowdown_in = 10.0, min_power = .2):
         """Now we want to do the opposite of step(): what power settings 
            of the four motors will take us from the current pose to a
@@ -236,9 +235,10 @@ class Robot:
         # close are we to the target (the error).  As we get close, we
         # will scale back the speed.  Eventually, we will put a PID
         # controller in here.  For now we just linearly ramp down.
-        forward_in, strafe_right_in, rotate_counter_clockwise_rads = current.movement_to(target)
+        forward_in, strafe_right_in = current.relative_direction(target)
+        rotate_counter_clockwise_rads = pose.normalize_angle(target.theta_rads - current.theta_rads)
         rot_dist_counter_clockwise_in = rotate_counter_clockwise_rads * self.eff_dist_center_to_wheel_in()
-        error_in = abs(forward_in) + abs(strafe_right_in) + 10.0 * abs(rotate_counter_clockwise_rads)
+        error_in = abs(forward_in) + abs(strafe_right_in) + 10.0 * abs(rot_dist_counter_clockwise_in)
 
         # If we are within the allowed range of the target, stop.
         if error_in < allowed_error_in:
