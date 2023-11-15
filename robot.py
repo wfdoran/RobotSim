@@ -264,8 +264,9 @@ class Robot:
         # See the section on Motion Profiles in
         #  https://gm0.org/en/latest/docs/software/concepts/control-loops.html
         # This is really naive motion profile.
-        if error_in < start_slowdown_in:
-            scale = min_power + (error_in - allowed_error_in) * (1.0 - min_power) / (start_slowdown_in - allowed_error_in)
+        offset_in = current.distance(target)
+        if offset_in < start_slowdown_in:
+            scale = min_power + (offset_in - allowed_error_in) * (1.0 - min_power) / (start_slowdown_in - allowed_error_in)
             norm /= scale
 
         power = [x / norm for x in dist_in]
@@ -349,7 +350,7 @@ if __name__ == "__main__":
     print("===============================")
     start = pose.Pose.random()
     target = pose.Pose.random()
-
+ 
     r3 = Robot()
     r3.set_pose(start)
 
@@ -370,7 +371,7 @@ if __name__ == "__main__":
         # how much did we move
         forward_in, strafe_right_in, rotation_counter_clockwise_rads = r3.delta_odo_to_change(*delta_odo)
 
-        # update our believed posisition 
+        # update our believed position
         current_pose.apply_movement(forward_in, strafe_right_in, rotation_counter_clockwise_rads)
         assert(current_pose == r3.pose)   # let's peek an make sure we are right
         plt.plot(current_pose.x_in, current_pose.y_in, 'o', color='black')
@@ -389,7 +390,7 @@ if __name__ == "__main__":
         r3.set_power(BACK_LEFT, power[BACK_LEFT])
 
         # step the robot with a bit of noise
-        r3.step(noise = 0.10)
+        r3.step(noise = 0.1)
         print(r3)
         if r3.is_stopped():
             break
