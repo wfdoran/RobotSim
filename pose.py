@@ -195,6 +195,13 @@ class Pose:
        
         return forward_in, strafe_in
 
+    def distance(self, target):
+        """Computes the distance to another pose."""
+        delta_x_in = target.x_in - self.x_in
+        delta_y_in = target.y_in - self.y_in
+        distance_sqr = delta_x_in * delta_x_in + delta_y_in * delta_y_in
+        return math.sqrt(distance_sqr)
+
 def normalize_angle(theta_rads : float):
     """ normalizes the angle theta to be in the range (-pi, pi]. """
     a = theta_rads % (2.0 * math.pi)
