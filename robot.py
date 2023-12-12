@@ -103,6 +103,12 @@ class Robot:
         return "%s [%8.4f, %8.4f, %8.4f, %8.4f]" % \
             (str(self.pose), self.__curr_power[0], self.__curr_power[1], self.__curr_power[2], self.__curr_power[3])
 
+    def plot(self, arrow_len_in : float = 1.0):
+        plt.plot(self.pose.x_in, self.pose.y_in, 'o', color='black')
+        plt.arrow(self.pose.x_in, self.pose.y_in,
+                  arrow_len_in * math.cos(self.pose.theta_rads),
+                  arrow_len_in * math.sin(self.pose.theta_rads))
+    
     def set_pose(self, pose : pose.Pose):
         self.pose = copy.copy(pose)
 
