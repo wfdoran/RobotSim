@@ -19,9 +19,9 @@ total_error = 0.0
 delta_time = 0.01
 
 kp = 0.1
-ki = 1000.0
+ki = 1.0
 
-for i in range(300):
+for i in range(1000):
     s_curr, l_curr, r_curr = r.read_odometry()
 
     if s_curr - s_base > target_in - allowed_err_in:
@@ -52,7 +52,7 @@ for i in range(300):
     r.set_power(robot.BACK_LEFT, back_left)
     r.set_power(robot.BACK_RIGHT, back_right)
 
-    r.step(t_sec = delta_time, noise = 0.3)
+    r.step(t_sec = delta_time, noise = 0.2)
     print(i, r, "%8.4f %8.4f %8.4f" % (error, r.pose.theta_rads - math.pi / 2.0, total_error))
     r.plot()
 
